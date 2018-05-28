@@ -523,13 +523,13 @@ typedef struct __CFRunLoopMode *CFRunLoopModeRef;
 struct __CFRunLoopMode {
     CFRuntimeBase _base;
     pthread_mutex_t _lock;	/* must have the run loop locked before locking this */
-    CFStringRef _name;
+    CFStringRef _name; // 模式名称 NSDefaultRunLoopMode
     Boolean _stopped;
     char _padding[3];
-    CFMutableSetRef _sources0;
-    CFMutableSetRef _sources1;
-    CFMutableArrayRef _observers;
-    CFMutableArrayRef _timers;
+    CFMutableSetRef _sources0;//
+    CFMutableSetRef _sources1;//
+    CFMutableArrayRef _observers;//
+    CFMutableArrayRef _timers;//
     CFMutableDictionaryRef _portToV1SourceMap;
     __CFPortSet _portSet;
     CFIndex _observerMask;
@@ -639,12 +639,12 @@ struct __CFRunLoop {
     __CFPort _wakeUpPort;			// used for CFRunLoopWakeUp 
     Boolean _unused;
     volatile _per_run_data *_perRunData;              // reset for runs of the run loop
-    pthread_t _pthread;
+    pthread_t _pthread; //一一对应（Runloop和线程）
     uint32_t _winthread;
-    CFMutableSetRef _commonModes;
-    CFMutableSetRef _commonModeItems;
-    CFRunLoopModeRef _currentMode;
-    CFMutableSetRef _modes;
+    CFMutableSetRef _commonModes;//CFMutableSetRef<NSString *>
+    CFMutableSetRef _commonModeItems;//[多个Observer,多个Timer,多个Source]
+    CFRunLoopModeRef _currentMode;//
+    CFMutableSetRef _modes; //CFMutableSetRef<CFRunLoopMode *>
     struct _block_item *_blocks_head;
     struct _block_item *_blocks_tail;
     CFTypeRef _counterpart;
@@ -1350,12 +1350,16 @@ static CFRunLoopRef __CFRunLoopCreate(pthread_t t) {
     return loop;
 }
 
+// 全局的Dictionary，key 是 pthread_t， value 是 CFRunLoopRef
 static CFMutableDictionaryRef __CFRunLoops = NULL;
+// 访问 __CFRunLoops 时的锁
 static CFSpinLock_t loopsLock = CFSpinLockInit;
 
 // should only be called by Foundation
 // t==0 is a synonym for "main thread" that always works
+// 获取一个 pthread 对应的 RunLoop。
 CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
+    //传入0 时 获取主线程
     if (pthread_equal(t, kNilPthreadT)) {
 	t = pthread_main_thread_np();
     }
