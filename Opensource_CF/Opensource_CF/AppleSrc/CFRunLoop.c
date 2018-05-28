@@ -1364,7 +1364,7 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
 	t = pthread_main_thread_np();
     }
     __CFSpinLock(&loopsLock);
-    if (!__CFRunLoops) {
+    if (!__CFRunLoops) {// 第一次进入时，初始化全局Dic，并先为主线程创建一个 RunLoop。
         __CFSpinUnlock(&loopsLock);
 	CFMutableDictionaryRef dict = CFDictionaryCreateMutable(kCFAllocatorSystemDefault, 0, NULL, &kCFTypeDictionaryValueCallBacks);
 	CFRunLoopRef mainLoop = __CFRunLoopCreate(pthread_main_thread_np());
@@ -1375,9 +1375,10 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
 	CFRelease(mainLoop);
         __CFSpinLock(&loopsLock);
     }
+    // 直接从 Dictionary 里获取。
     CFRunLoopRef loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
     __CFSpinUnlock(&loopsLock);
-    if (!loop) {
+    if (!loop) {// 取不到时，创建一个
 	CFRunLoopRef newLoop = __CFRunLoopCreate(t);
         __CFSpinLock(&loopsLock);
 	loop = (CFRunLoopRef)CFDictionaryGetValue(__CFRunLoops, pthreadPointer(t));
@@ -1391,7 +1392,7 @@ CF_EXPORT CFRunLoopRef _CFRunLoopGet0(pthread_t t) {
     }
     if (pthread_equal(t, pthread_self())) {
         _CFSetTSD(__CFTSDKeyRunLoop, (void *)loop, NULL);
-        if (0 == _CFGetTSD(__CFTSDKeyRunLoopCntr)) {
+        if (0 == _CFGetTSD(__CFTSDKeyRunLoopCntr)) {// 注册一个回调，当线程销毁时，顺便也销毁其对应的 RunLoop。
             _CFSetTSD(__CFTSDKeyRunLoopCntr, (void *)(PTHREAD_DESTRUCTOR_ITERATIONS-1), (void (*)(void *))__CFFinalizeRunLoop);
         }
     }
